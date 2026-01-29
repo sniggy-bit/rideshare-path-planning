@@ -1,13 +1,9 @@
 #import deque from collections. Double-ended queues allow enqueuing and dequeuing in O(1) time.
 from collections import deque
+#import the grid class to access the get_neighbors function
+import grid
 
-def bfs(start, target, grid):
-
-    #Helper function to get neighbors of a node in the grid
-    def get_neighbors(node):
-        #implement getting neighbors from the grid
-        neighbors = []
-        return neighbors
+def bfs_shortest_path(start, target, get_neighbors):
     
     # Basic input validation
     if start is None or target is None:
@@ -23,7 +19,8 @@ def bfs(start, target, grid):
     visited.add(start)
     q.append(start)
 
-    # TODO: implement BFS loop here
+    ##BFS Shortest Path Logic
+
     #The queue tracks nodes that need to be explored. Once a node has been visited, it is popped from the queue
     # and explored. Once all nodes are visited and explored, the queue becomes empty and the BFS is ended.
     while q:
@@ -44,17 +41,12 @@ def bfs(start, target, grid):
                 #Path Reconstruction Code
                     #Create a path vector to store the path (in reverse, from target -> start)
                     path = []
-                    path.append(target)
-                    j = 0
-                    while parent[path[j]] is not None:
-                        path.append(parent[path[j]])
-                        j = j + 1
+                    current = target
+                    while current is not None:
+                        path.append(current)
+                        current = parent[current]
                     path.reverse()
                     return {"path" : path ,
                                 "length" : len(path) - 1}
     #If the target node doesn't exist, return None
     return None
-
-#Test the code above and print a valid BFS which ends at the target
-graph = [[0,1],[0,2],[0,3],[1,2],[2,3],[2,4],[3,4],[4,5],[4,6]]
-bfs(graph,5,6)
