@@ -1,7 +1,7 @@
 #import deque from collections. Double-ended queues allow enqueuing and dequeuing in O(1) time.
 from collections import deque
 #import the grid class to access the get_neighbors function
-import grid
+from src.graph.grid import Grid
 
 def bfs_shortest_path(start, target, get_neighbors):
     
