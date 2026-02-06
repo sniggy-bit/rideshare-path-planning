@@ -26,6 +26,10 @@ class RequestSet:
     def get_all_requests(self) -> Dict[str, RideRequest]:
         return self.requests
     
+    #Retrieve a specific request for a given passenger ID
+    def get_request(self, passenger_id: str) -> RideRequest:
+        return self.requests.get(passenger_id, None)
+    
     #Retrieve a pickup location for a specific passenger
     def get_pickup(self, passenger_id: str) -> node:
         return self.requests[passenger_id].pickup_location                      
