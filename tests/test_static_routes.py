@@ -37,16 +37,15 @@ def test_route_generation():
     request_set = RequestSet()
     request_set.add_request(RideRequest("A", (0, 0), (2, 2)))
     request_set.add_request(RideRequest("B", (1, 1), (2, 0)))
+    request_set.add_request(RideRequest("C", (0, 1), (1, 0)))
 
     # Generate routes using the static planner
     valid_routes = static_planner(grid_map, request_set)
-
+    #print(valid_routes)
     # Assertions to verify that all generated routes are valid
     for route in valid_routes:
         assert route[0][0] == 'A'
-        assert route[1][1] == 'pickup'
+        assert route[0][1] == 'pickup'
         passenger = route[1][0]
-        if passenger == 'B': 
+        if passenger == 'B' or passenger == 'C': 
             assert route [1][1] == 'pickup'
-
-    print(valid_routes)

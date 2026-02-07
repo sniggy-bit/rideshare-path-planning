@@ -10,7 +10,6 @@ from src.graph.bfs import bfs_shortest_path
 from src.graph.grid import Grid 
 from typing import List, Tuple
 
-
 #Static planner function: takes in a grid map, a set of passenger requests, and a vehicle's current location. Returns an optimal path for the vehicle to pick up and drop off all passengers.
 def static_planner(grid_map, requests: events.RequestSet):
     #TODO: Add grid map representation
@@ -20,36 +19,42 @@ def static_planner(grid_map, requests: events.RequestSet):
 
     #Extract pickup and dropoff locations from requests
 
-    stops = [Tuple[str,str,events.node]]
+    stops = []
 
     for request in requests.get_all_requests().values():
         stops.append((request.passenger_id,'pickup', request.pickup_location))
         stops.append((request.passenger_id,'dropoff', request.dropoff_location))
-
+    
+    print(f"Stops: {stops}")
+    print(f"Number of stops: {len(stops)}")
+    
     #Generate all valid sequences of stops (pickup and dropoff)
-    sequences = permutations(stops)
+    
+    sequences = list(permutations(stops))
+    print(f"Total sequences: {len(sequences)}")
+    print(f"Sample sequence: {sequences[0]}")
     valid_sequences = []
-
-    def is_valid_sequence(sequence):
-        picked_up = set()
-        for stop in sequence:
-            print(stop)
-            (passenger_id, action, location) = stop
-            if passenger_id != 'A':
-                return False
-            elif action == 'pickup':
-                picked_up.add(passenger_id)
-            elif action == 'dropoff':
-                if passenger_id not in picked_up:
-                    return False
-        return True
     
     for seq in sequences:
         if is_valid_sequence(seq):
             valid_sequences.append(seq)
+    #print(f"Valid sequences: {valid_sequences}")
+    print(f"Number of valid sequences: {len(valid_sequences)}")
     return valid_sequences
 
-
+def is_valid_sequence(sequence):
+        
+        if (sequence[0][0] != 'A') or (sequence[0][1] != 'pickup'):
+                return False
+        picked_up = set()
+        for stop in sequence:
+            (passenger_id, action, location) = stop
+            if action == 'pickup':
+                picked_up.add(passenger_id)
+            elif action == 'dropoff':
+                if passenger_id not in picked_up:
+                    return False 
+        return True
 
 
     
