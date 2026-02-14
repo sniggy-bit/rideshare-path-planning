@@ -49,3 +49,27 @@ def test_route_generation():
         passenger = route[1][0]
         if passenger == 'B' or passenger == 'C': 
             assert route [1][1] == 'pickup'
+
+def test_route_evaluator():
+    from src.routing.route_evaluator import path_cost_finder
+    from src.graph.bfs import bfs_shortest_path
+    from src.graph.grid import Grid
+    from src.routing.static_planner import is_valid_sequence, route_generator
+    from src.routing.events import RideRequest, RequestSet
+
+    # Create a simple grid and valid_routes for testing
+    grid = Grid(3, 3)
+
+    # Create some ride requests
+    requests = RequestSet()
+    requests.add_request(RideRequest("A", (0, 0), (2, 2)))
+    requests.add_request(RideRequest("B", (1, 1), (2, 0)))
+
+    valid_routes = route_generator(grid, requests)
+
+    #Test the path cost finder on the generated valid routes
+    cost = []
+    for route in valid_routes:
+        route_cost = path_cost_finder(grid, route, bfs_shortest_path)
+        cost.append(route_cost)
+    print(f"Costs of valid routes: {cost}")
