@@ -67,9 +67,11 @@ def test_route_evaluator():
 
     valid_routes = route_generator(grid, requests)
 
+    #Initialize a memo (dict) to store previously computed costs
+    dist_cache = {}
     #Test the path cost finder on the generated valid routes
     cost = []
     for route in valid_routes:
-        route_cost = path_cost_finder(grid, route, bfs_shortest_path)
+        route_cost = path_cost_finder(grid, route, bfs_shortest_path, dist_cache)
         cost.append(route_cost)
     print(f"Costs of valid routes: {cost}")
