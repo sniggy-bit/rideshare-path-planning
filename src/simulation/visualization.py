@@ -2,7 +2,12 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-
+from src.graph.bfs import bfs_shortest_path
+from src.graph.grid import Grid
+#Add visualization code to show the path in real time
+import matplotlib.animation as animation
+#Create custom colormap for visualization
+from matplotlib.colors import ListedColormap
 
 #Function to visualize BFS path on a grid
 def visualize_bfs(grid, path, start, target):
@@ -30,3 +35,35 @@ def visualize_bfs(grid, path, start, target):
     plt.show(block=False)
     plt.pause(2.0) # Show the result for 2 seconds
     plt.close()    # Automatically close it so the test continues
+
+def run_visualization():
+
+    # Create a simple grid and test the visualization
+
+    grid = Grid(3,3)
+    display_grid = np.zeros((grid.width, grid.height))
+
+    #Colormap definition 
+    # 0:white (empty), 1:black (wall), 2:cyan (frontier), 3:blue (visited), 5:red (path)
+    my_colors = ["white", "black", "cyan", "blue", "red"]
+    custom_cmap = ListedColormap(my_colors)
+
+    # Setup Plot
+    fig, ax = plt.subplots()
+    im = ax.imshow(display_grid, cmap=custom_cmap, vmin=0, vmax=len(my_colors)-1)
+    
+    def update(frame_data):
+        im.set_array(frame_data)
+        return [im]
+
+    # Create Animation
+    # We pass the generator from the other file into 'frames'
+    ani = animation.FuncAnimation(
+        fig, 
+        update, 
+        frames = bfs_shortest_path(grid, (0,0), (2,2), display_grid), 
+        interval = 30, 
+        repeat = False,
+        cache_frame_data = False
+    )
+    plt.show()
