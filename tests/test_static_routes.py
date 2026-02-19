@@ -52,7 +52,7 @@ def test_route_generation():
 
 def test_route_evaluator():
     from src.routing.route_evaluator import path_cost_finder
-    from src.graph.bfs import bfs_shortest_path
+    from src.graph.path_finder import bfs_shortest_path
     from src.graph.grid import Grid
     from src.routing.static_planner import is_valid_sequence, route_generator
     from src.routing.events import RideRequest, RequestSet
@@ -72,6 +72,10 @@ def test_route_evaluator():
     #Test the path cost finder on the generated valid routes
     cost = []
     for route in valid_routes:
-        route_cost = path_cost_finder(grid, route, bfs_shortest_path, dist_cache)
+        route_cost = path_cost_finder(grid, route, bfs_shortest_path, dist_cache,mode = "simple")
+        best_cost = cost[0] if cost else float('inf')
+        if route_cost < best_cost:
+            best_cost = route_cost
         cost.append(route_cost)
-    print(f"Costs of valid routes: {cost}")
+        print(f"Route: {route}, Path Cost: {route_cost}")
+    print(f"Best Cost: {best_cost}")
