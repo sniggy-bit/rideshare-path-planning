@@ -73,4 +73,6 @@ def get_cached_dist(grid, start, end, bfs_shortest_path, cache, mode="simple"):
         path_cost = path["length"]
         cache[pair_key] = path_cost
         return path_cost
-    
+
+def cost_function(grid, route, bfs_shortest_path, cache, mode="simple"):
+    return path_cost_finder(grid, route, bfs_shortest_path, cache, mode)
