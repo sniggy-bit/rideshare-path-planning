@@ -5,9 +5,16 @@ import numpy as np
 from src.graph.path_finder import bfs_shortest_path
 from src.graph.grid import Grid
 
-#Manhattan distance function: given two locations (x1, y1) and (x2, y2), returns the manhattan distance between them
-def get_dist(loc1, loc2):
-    return abs(loc1[0] - loc2[0]) + abs(loc1[1] - loc2[1])
+#Cache all distances between stops to avoid redundant calculations
+
+def all_distances(grid, stops, bfs_shortest_path,cache, mode = "simple"):
+    for i in range(len(stops)):
+        for j in range(i+1, len(stops)):
+            start = stops[i][2]
+            end = stops[j][2]
+            # Manhattan distance for distances between stops
+            cache[tuple(sorted((start, end)))] = get_cached_dist(grid, start, end, bfs_shortest_path, cache, mode="simple")
+    return cache
 
 
 
@@ -60,7 +67,7 @@ def path_quality_finder(grid, route, bfs_shortest_path,cache, mode = "simple"):
 def get_cached_dist(grid, start, end, bfs_shortest_path, cache, mode="simple"):
     # Simple mode: use Manhattan distance
     if mode == "simple":
-        return get_dist(start, end)
+        return abs(start[0] - end[0]) + abs(start[1] - end[1])
     else:
         # Create a key for the memoization dictionary
         pair_key = tuple(sorted((start, end)))
