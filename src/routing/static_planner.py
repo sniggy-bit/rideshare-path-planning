@@ -1,7 +1,5 @@
 #Static path planning module for rideshare application 
 
-#For now, the module implements a bfs-based path planner on a grid map. A* will be added later once costs and heuristics are defined.
-
 #Imports
 import numpy as np
 from itertools import permutations
@@ -51,6 +49,8 @@ def is_valid_sequence(sequence):
                     return False 
         return True
 
-def calculate_heuristic(start, end, users_in_car, alpha):
-     return get_dist(start, end) + alpha * len(users_in_car)
+class StaticPlanner:
+    def __init__(self, grid_map, requests: events.RequestSet):
+        self.grid_map = grid_map
+        self.requests = requests
     
