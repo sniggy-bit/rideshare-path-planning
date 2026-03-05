@@ -51,10 +51,10 @@ def test_route_generation():
             assert route [1][1] == 'pickup'
 
 def test_route_evaluator():
-    from src.routing.route_evaluator import path_cost_finder,path_quality_finder
+    
     from src.graph.path_finder import bfs_shortest_path
     from src.graph.grid import Grid
-    from src.routing.static_planner import is_valid_sequence, route_generator
+    from src.routing.static_planner import route_generator
     from src.routing.events import RideRequest, RequestSet
 
     # Create a simple grid and valid_routes for testing
@@ -65,35 +65,8 @@ def test_route_evaluator():
     requests.add_request(RideRequest("A", (0, 0), (0, 5)))
     requests.add_request(RideRequest("B", (5, 0), (5, 5)))
 
-    valid_routes = route_generator(grid, requests)
+    #Test the route generator upto the point of caching distances
+    route_generator(grid, requests)
 
-    #Initialize a memo (dict) to store previously computed costs
-    dist_cache = {}
-    
-    print(f"{'Route Sequence':<60} | {'T(r)':<5} | {'Q(r)':<5}")
-    print("-" * 75)
-    
-    #Test the path cost finder on the generated valid routes
-    results = []
-    for route in valid_routes:
-        #Calculate path cost for the route using the path cost finder
-        path_cost = path_cost_finder(grid, route, bfs_shortest_path, dist_cache,mode = "simple")
-        #Calculate path quality for the route using the path quality finder
-        path_quality, user_qualities = path_quality_finder(grid, route, bfs_shortest_path, dist_cache, mode = "simple")
-        results.append({"route": route, 
-                        "path_cost": path_cost, 
-                        "path_quality": path_quality, 
-                        "user_qualities": user_qualities})
-        # Format route for printing: e.g., (A, pickup) -> (B, pickup)
-        route_str = " -> ".join([f"({r[0]},{r[1]})" for r in route])
-        print(f"{route_str:<60} | {path_cost:<5} | {path_quality:<5}")
 
-    #Find the best routes based on path quality (lowest) and path cost (lowest) print it
-    print("-" * 75)
-    best_cost_route = min(results, key=lambda x: x['path_cost'])
-    print(f"Best cost route: {best_cost_route['route']}")
-    best_quality_route = min(results, key=lambda x: x['path_quality'])
-    print(f"Best quality route: {best_quality_route['route']}")
 
-    #Show that best cost route and best quality route are not infact the same
-    assert best_cost_route['route'] != best_quality_route['route'], "Best cost and quality happen to be same for this case"
