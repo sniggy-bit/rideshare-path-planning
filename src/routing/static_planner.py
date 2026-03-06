@@ -2,6 +2,7 @@
 
 #Imports
 import itertools
+import heapq
 from src.routing import events
 from src.routing.route_evaluator import all_distances, simple_cost_function
 from src.graph.path_finder import bfs_shortest_path
@@ -32,9 +33,9 @@ class TaxiState:
             return self.total_t + self.total_q
 
 #Route generator function: takes in a grid map, a set of passenger requests, and a vehicle's current location. 
-# Returns an optimal path for the vehicle to pick up and drop off all passengers using beam search with a beam 
-# width of 2.
-def route_generator(grid: Grid, requests: events.RequestSet, beam_width: int = 2, gamma = 1.5): 
+# Returns an optimal path for the vehicle to pick up and drop off all passengers using A*
+
+def route_generator(grid: Grid, requests: events.RequestSet, gamma = 1.5): 
     
     #SETUP
 
@@ -56,17 +57,37 @@ def route_generator(grid: Grid, requests: events.RequestSet, beam_width: int = 2
     #INITIALIZATION
     
     #Initialize state of taxi when the ride starts
-    initial_state = TaxiState(location=(0, 0), waiting=passenger_ids, in_car=())
+    start = request_dict[passenger_ids[0]]
+    route = [(passenger_ids[0], "pickup", start.pickup_location)]
+    initial_state = TaxiState(location = start.pickup_location, waiting=passenger_ids, in_car=())
     
-    #BEAM SEARCH
-    beam = [initial_state]
+    #A* SEARCH 
+    open_set = [initial_state]
+    heap = heapq.heapify(open_set)
     
+    #Tracks visited states to avoid cycling
+    visited = {(initial_state.location, initial_state.waiting, initial_state.in_car): initial_state.total_j}
+
+    #Loop to search for optimal route
+    while open_set:
+        current_state = heapq.heappop(open_set)
+
+        #Check whether the current state is the goal state (all passengers dropped)
+        if current_state.waiting == () and current_state.in_car == ():
+            return current_state.route
+    
+        #Ensure that cycling is avoided by checking whether this is the best path to this state so far
+        state_id = (current_state.location, current_state.waiting, current_state.in_car)
+        if state_id not in visited or visited[state_id] < current_state.total_j:
+            #Update current total J to be the lowest for this state
+            visited[state_id] = current_state.total_j
+            for next_state in valid_next_states(current_state, distance_cache, gamma):
+                heapq.heappush(open_set, next_state)
     return
 
 
-#Helper function to check if a sequence of stops is valid
-def is_valid_sequence(sequence):
-
+#Helper function to check if an action is valid (e.g. no dropping off before pickup, A must be picked up first, etc.)
+def is_valid_action(sequence):
     #Ensure A is always picked up first
     if (sequence[0][0] != 'A') or (sequence[0][1] != 'pickup'):
             return False
@@ -80,4 +101,8 @@ def is_valid_sequence(sequence):
             if passenger_id not in picked_up:
                 return False 
     return True
+#Helper function to generate valid next states from the current state,
+#based on the distance cache and gamma weighting factor for user quality
+def valid_next_states(current_state, distance_cache, gamma):
+    next_states = []
     
