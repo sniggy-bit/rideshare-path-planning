@@ -68,5 +68,22 @@ def test_route_evaluator():
     #Test the route generator upto the point of caching distances
     route_generator(grid, requests)
 
+def test_generate_next_states():
+    from src.routing.static_planner import generate_next_states, TaxiState
+    from src.routing.events import RideRequest, RequestSet
+
+    # Create some ride requests
+    requests = RequestSet()
+    
+    requests.add_request(RideRequest("A", (0, 0), (0, 5)))
+    requests.add_request(RideRequest("B", (5, 0), (5, 5)))
+    requests.add_request(RideRequest("C", (2, 5), (3, 3)))
+
+    # Create a sample state for testing
+    current_state = TaxiState(location=(0, 0), waiting=('C'), in_car=('A','B'), total_t=0, total_q=0, time=0)
+    # Generate next states
+    next_states = generate_next_states(current_state, requests.get_all_requests(), {}, gamma=1.5)
+    print(f'List of next states: {next_states}')
+
 
 
