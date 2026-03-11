@@ -20,7 +20,7 @@ from typing import List, Tuple
 
 class TaxiState:
     def __init__(self, location, waiting, in_car, total_t=0, total_q=0, time=0, route=None):
-        self.location = location
+        self.location = location        #Current location of the taxi (tuple)
         self.waiting = waiting          # Tuple of user IDs
         self.in_car = in_car            # Tuple of user IDs
         self.total_t = total_t          # Running T(r)
@@ -56,7 +56,7 @@ def route_generator(grid: Grid, requests: events.RequestSet, gamma = 1.5):
 
     #INITIALIZATION
     
-    #Initialize state of taxi when the ride starts
+    #Initialize state of taxi when the ride starts, pick up A
     start = request_dict[passenger_ids[0]]
     route = [(passenger_ids[0], "pickup", start.pickup_location)]
     initial_state = TaxiState(location = start.pickup_location, waiting=passenger_ids, in_car=())
@@ -103,6 +103,18 @@ def is_valid_action(sequence):
     return True
 #Helper function to generate valid next states from the current state,
 #based on the distance cache and gamma weighting factor for user quality
-def valid_next_states(current_state, distance_cache, gamma):
+
+#This is basically similar to get neighbors in a bfs/djikstra
+#For each waiting passenger, we can generate a state where they are picked up
+#For each passenger in the car, we generate a state where they are dropped off
+
+def valid_next_states(current_state, request_dict, distance_cache, gamma):
     next_states = []
+    #Generate states for picking up or dropping off each passenger
+    for passenger_id in current_state.waiting:
+        next_states.append(request_dict[passenger_id].pickup_location, passenger_id, "pickup")
+    for passenger_id in current_state.in_car:
+        next_states.append(request_dict[passenger_id].dropoff_location, passenger_id, "dropoff")
+    return next_states
+    
     
