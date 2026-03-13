@@ -19,7 +19,7 @@ from typing import List, Tuple
 #  route taken so far (list of actions).
 
 class TaxiState:
-    def __init__(self, location, waiting, in_car, total_t=0, total_q=0, time=0, route=None):
+    def __init__(self, location:tuple, waiting:tuple, in_car:tuple, total_t=0, total_q=0, time=0, route=None):
         self.location = location        #Current location of the taxi (tuple)
         self.waiting = waiting          # Tuple of user IDs
         self.in_car = in_car            # Tuple of user IDs
@@ -128,36 +128,40 @@ def generate_next_states(current_state, request_dict, distance_cache, gamma):
 def calculate_heuristic(state:TaxiState, distance_cache, request_dict,gamma):
     #Heuristic function to estimate remaining cost to goal
     #Can be based on distance to remaining pickups/dropoffs and user quality
-    heuristic_t = 0
-    heuristic_q = {passenger_id: 0 for passenger_id in (state.waiting + state.in_car)}
+    heuristic_scores = {passenger_id: (0,0) for passenger_id in (state.waiting + state.in_car)}
     #make dicts of user qualities for remaining passengers remaining in car and waiting to be picked up
     h_wait = {}
     h_ride = {}
-
+    
     #Calculate heuristics h(r) and h(u) based on distance to remaining pickups and dropoffs
     #Calculate the wait times and ride times for remaining passengers to estimate h(u)
     for passenger_id in state.waiting:
         pickup_location = request_dict[passenger_id].pickup_location
         dropoff_location = request_dict[passenger_id].dropoff_location
-        heuristic_t += distance_cache[(state.location, pickup_location)] 
-        print(f'Min time to pick passenger {passenger_id}: {heuristic_t}')
-        #assume min(wait time) = dist(curr,pickup) + dist(pickup, dropoff)
-        h_wait[passenger_id] = distance_cache[(state.location, pickup_location)] + distance_cache[(pickup_location, dropoff_location)]
-        #Calculate h(u) as the sum of weighted wait times and ride times for remaining passengers
-        heuristic_q[passenger_id] += h_wait[passenger_id]
-        print(f'Heuristic costs for each passenger: {heuristic_q}')
+        #Calculate h(r) as the distance to pickup
+        heuristic_t = distance_cache[(state.location, pickup_location)]
+        #Calculate h(u) as the weighted wait time
+        #assume min(wait time) = dist(curr,pickup) 
+        h_wait[passenger_id] = distance_cache[(state.location, pickup_location)]
+        heuristic_q = gamma * h_wait[passenger_id]
+        #Update the heuristic values for passengers waiting 
+        current_t, current_q = heuristic_scores[passenger_id]
+        heuristic_scores[passenger_id] = (current_t + heuristic_t, current_q + heuristic_q)
+
     for passenger_id in state.in_car:
         dropoff_location = request_dict[passenger_id].dropoff_location
-        heuristic_t += distance_cache[(state.location, dropoff_location)]
-        print(f'Min time to drop passenger {passenger_id}: {heuristic_t}')
         #assume min(ride time) = dist(curr,dropoff)
+        heuristic_t = distance_cache[(state.location, dropoff_location)] 
+         #Calculate h(u) as the weighted ride time
+         #assume min(ride time) = dist(curr,dropoff)
         h_ride[passenger_id] = distance_cache[(state.location, dropoff_location)]
-        heuristic_q[passenger_id] += gamma * h_ride[passenger_id]
-        print(f'Heuristic costs for each passenger: {heuristic_q}')
-    #Combine heuristics for time and quality into a single heuristic value
-    heuristic_value = heuristic_t + sum(heuristic_q.values())
-    return heuristic_value
-    
+        heuristic_q = h_ride[passenger_id]
+        #Update the heuristic values for passengers in the car
+        current_t, current_q = heuristic_scores[passenger_id]
+        heuristic_scores[passenger_id] = (current_t + heuristic_t, current_q + heuristic_q)
+    #Combine heuristics for time and quality into a single heuristic score
+    total_heuristic_score = sum(t + q for t, q in heuristic_scores.values())
+    return total_heuristic_score
 
 
 
