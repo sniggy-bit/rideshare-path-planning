@@ -100,6 +100,7 @@ def test_heuristic_function():
     
     requests.add_request(RideRequest("A", (0, 0), (0, 5)))
     requests.add_request(RideRequest("B", (5, 0), (5, 5)))
+    requests.add_request(RideRequest("C", (2, 5), (7, 5)))
 
     request_dict = requests.get_all_requests()
     passenger_ids = tuple(request_dict.keys())
@@ -114,12 +115,11 @@ def test_heuristic_function():
         stops.append((passenger_id, "pickup", pickup_location))
         stops.append((passenger_id, "dropoff", dropoff_location))
     distance_cache = all_distances(grid, stops, bfs_shortest_path, distance_cache, mode = "simple")
+    print(f"Distance cache: {distance_cache}")
 
     # Create a sample state for testing
-    current_state = TaxiState(location=(0, 0), waiting=(), in_car=('A','B'), total_t=0, total_q=0, time=0)
+    current_state = TaxiState(location=(0, 0), waiting=('B','C'), in_car=('A',), total_t=0, total_q=0, time=0)
     # Calculate heuristic value for the current state
     heuristic_value = calculate_heuristic(current_state, distance_cache, requests.get_all_requests(), gamma=1.5)
     print(f'Heuristic cost for the current state: {heuristic_value}')
-
-
 
