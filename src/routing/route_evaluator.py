@@ -1,7 +1,9 @@
 #Module containing functions to evaluate the cost and quality of a route
+###UPDATE ALL FUNCTIONS IN THIS MODULE TO WORK WITH STATE REPRESENTATION IN STATIC PLANNER###
 
 #Imports
 import numpy as np
+from routing.static_planner import TaxiState
 from src.graph.path_finder import bfs_shortest_path
 from src.graph.grid import Grid
 
@@ -33,16 +35,6 @@ def all_distances(grid, stops, bfs_shortest_path,cache, mode = "simple"):
             # Manhattan distance for distances between stops
             cache[tuple(sorted((start, end)))] = get_cached_dist(grid, start, end, bfs_shortest_path, cache, mode="simple")
     return cache
-
-
-
-#Path cost finder function T(r): calculates a running total of the path cost for a given route
-#using the cached distances between stops to avoid redundant calculations
-def path_cost_finder(grid,start, end, bfs_shortest_path, cache, mode = "simple", total_cost):
-    total_cost += cache[tuple(sorted((start, end)))]
-    return total_cost
-
-
 
 #Path quality function Q(r)
 def path_quality_finder(grid, route, bfs_shortest_path,cache, mode = "simple"):
@@ -81,20 +73,21 @@ def path_quality_finder(grid, route, bfs_shortest_path,cache, mode = "simple"):
     return total_quality, user_qualities
 
 
-def simple_cost_function(current_state, next_node, cache,gamma = 1.5):
+def simple_cost_function(current_state: TaxiState, next_node, cache,gamma = 1.5):
    
-    path_cost = current_state.path_cost
-    total_quality = current_state.total_quality
-    current_time = current_state.current_time
-    user_qualities = current_state.user_qualities
-    user_pickup_times = current_state.user_pickup_times
-    user_ride_times = current_state.user_ride_times
+    location = current_state.location    #Current location of the taxi (tuple)
+    waiting = current_state.waiting          # Tuple of user IDs
+    in_car = current_state.in_car            # Tuple of user IDs
+    total_t = current_state.total_t         # Running T(r)
+    total_q = current_state.total_q         # Running Q(u)
+    total_time_elapsed = current_state.time_elapsed         # Current clock
+    total_route = current_state.route         # List of actions taken so far
 
     ##TODO: Change the syntax to deal with current_state, once state is defined in the static planner
     #Also vet the logic later
     
     #Path cost T(r)
-    path_cost += cache[tuple(sorted((start, end)))]
+    total_t += cache[tuple(sorted((next_node.start, end)))]
     #Path quality Q(u)
     current_time += cache[tuple(sorted((start, end)))]
     if next_node.action == "pickup":
