@@ -28,9 +28,9 @@ class TaxiState:
         self.time_elapsed = time        # Current clock
         self.route = route or []        # List of actions taken so far
 
-        @property
-        def total_j(self):
-            return self.total_t + self.total_q
+    @property
+    def total_j(self):
+        return self.total_t + self.total_q
 
 #Route generator function: takes in a grid map, a set of passenger requests, and a vehicle's current location. 
 # Returns an optimal path for the vehicle to pick up and drop off all passengers using A*
@@ -68,12 +68,10 @@ def route_generator(grid: Grid, requests: events.RequestSet, gamma = 1.5):
                               time=0, 
                               route=route)
     
-    #A* SEARCH 
+    #A* SEARCH ###FIX BELOW###
     
     #frontier -> priority queue ordered by total J = T + Q + h(route) + h(quality))
-    open_set = [initial_state]
-    #min heap the frontier to ensure the state with lowest total J is always popped first
-    heap = heapq.heapify(open_set)
+    open_set = [(initial_state.total_j, initial_state)]
     
     #explored -> Tracks visited states to avoid cycling 
     # links state to total cost to get there.
@@ -92,19 +90,35 @@ def route_generator(grid: Grid, requests: events.RequestSet, gamma = 1.5):
         #add current state to explored (closed) set:
         current_state_id = (current_state.location, current_state.waiting, current_state.in_car)
         visited[current_state_id] = current_state.total_j
-       
-        #******ADD HEURISTIC CALCULATION LATER******#
-        for next_state in generate_next_states(current_state, request_dict, distance_cache, gamma):
+        
+        potential_next_states = generate_next_states(current_state, request_dict, distance_cache, gamma)
+        for move in potential_next_states:
+            next_location, p_id, action = move
+            if action == "pickup":
+                new_waiting = tuple(p for p in current_state.waiting if p != p_id)
+                new_in_car = tuple(sorted(current_state.in_car + (p_id,)))
+            else: # dropoff
+                new_waiting = current_state.waiting
+                new_in_car = tuple(p for p in current_state.in_car if p != p_id)
+            
+            new_t, new_q = simple_cost_function(current_state, move, distance_cache, gamma)
+            next_state = TaxiState(location=next_location,
+                                    waiting=new_waiting,
+                                    in_car=new_in_car,
+                                    total_t=new_t,
+                                    total_q=new_q,
+                                    route=current_state.route + [move]
+            )
+            h = calculate_heuristic(next_state, distance_cache, request_dict, gamma)
+            next_state.total_j = next_state.total_t + next_state.total_q + h
             #Ensure that cycling is avoided by checking whether this is the best path to this state so far
             state_id = (next_state.location, next_state.waiting, next_state.in_car)
-            if state_id not in open_set or visited:
+            new_g = next_state.total_j
+
+            if state_id not in visited or new_g < visited[state_id]:
             #Update current state in frontier containing total J value
-                heapq.heappush(open_set, next_state)
-            elif next_state.total_j < visited[state_id]:
-                heapq.heappush(open_set, next_state)
-                #update cost to the new best cost for this state in the visited set
-                visited[state_id] = next_state.total_j    
-            #check order of the above later
+                visited[state_id] = new_g
+                heapq.heappush(open_set, (next_state.total_j, next_state)) 
     #if frontier is empty and goal state doesn't exist, return failure
     return None
 
