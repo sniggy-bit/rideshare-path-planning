@@ -91,6 +91,7 @@ def route_generator(grid: Grid, requests: events.RequestSet, gamma = 1.5):
         current_state_id = (current_state.location, current_state.waiting, current_state.in_car)
         visited[current_state_id] = current_state.total_j
         
+        #generate child nodes and evaluate their total J values, adding them to the frontier if they haven't been explored 
         potential_next_states = generate_next_states(current_state, request_dict, distance_cache, gamma)
         for move in potential_next_states:
             next_location, p_id, action = move
@@ -100,7 +101,6 @@ def route_generator(grid: Grid, requests: events.RequestSet, gamma = 1.5):
             else: # dropoff
                 new_waiting = current_state.waiting
                 new_in_car = tuple(p for p in current_state.in_car if p != p_id)
-            
             new_t, new_q = simple_cost_function(current_state, move, distance_cache, gamma)
             next_state = TaxiState(location=next_location,
                                     waiting=new_waiting,
@@ -113,12 +113,12 @@ def route_generator(grid: Grid, requests: events.RequestSet, gamma = 1.5):
             next_state.total_j = next_state.total_t + next_state.total_q + h
             #Ensure that cycling is avoided by checking whether this is the best path to this state so far
             state_id = (next_state.location, next_state.waiting, next_state.in_car)
-            new_g = next_state.total_j
 
-            if state_id not in visited or new_g < visited[state_id]:
+            if (state_id not in visited) or ((next_state.total_j,next_state) not in open_set):
             #Update current state in frontier containing total J value
-                visited[state_id] = new_g
-                heapq.heappush(open_set, (next_state.total_j, next_state)) 
+                heapq.heappush(open_set, (next_state.total_j, next_state))
+            elif next_state.total_j < visited[state_id]:
+                heapq.heappush(open_set, (next_state.total_j, next_state))
     #if frontier is empty and goal state doesn't exist, return failure
     return None
 
