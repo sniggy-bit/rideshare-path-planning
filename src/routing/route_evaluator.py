@@ -36,42 +36,6 @@ def all_distances(grid, stops, bfs_shortest_path,cache, mode = "simple"):
             cache[tuple(sorted((start, end)))] = get_cached_dist(grid, start, end, bfs_shortest_path, cache, mode="simple")
     return cache
 
-#Path quality function Q(r)
-def path_quality_finder(grid, route, bfs_shortest_path,cache, mode = "simple"):
-    total_quality = 0
-    current_time = 0
-    user_qualities = {}
-    user_pickup_times = {"A": 0}
-    user_ride_times = {}
-    #Weighting factor gamma for user quality calculation
-    gamma = 1.5
-
-    #Iterate through route, calculating time taken for each leg
-    for i in range(len(route)-1):
-            #Increment time by path cost
-            dist = all_distances(grid, route, bfs_shortest_path, cache, mode)[tuple(sorted((route[i][2], route[i+1][2])))]
-            current_time += dist
-
-            #Record the pickup time for each user
-            if route[i+1][1] == "pickup":
-                user_id = route[i+1][0]
-                user_pickup_times[user_id] = current_time
-                print(f"User {user_id} picked up at time {current_time} seconds.")
-
-            #Calculate the user quality, Q(u) for a given user
-            if route[i+1][1] == "dropoff":
-                user_id = route[i+1][0]
-                user_ride_times[user_id] = current_time - user_pickup_times[user_id]
-                print(f"User {user_id} dropped off at time {current_time} seconds.")
-                print(f"Ride time: {user_ride_times[user_id]} seconds.")
-                
-                #Weight the user quality by pickup time and ride time
-                user_qualities[user_id] = user_pickup_times[user_id] + gamma * user_ride_times[user_id]
-        
-    #Calculate total quality as the sum of user qualities
-    total_quality = sum(user_qualities.values())
-    return total_quality, user_qualities
-
 
 def simple_cost_function(current_state: TaxiState, next_node, cache,gamma = 1.5):
    
@@ -83,27 +47,30 @@ def simple_cost_function(current_state: TaxiState, next_node, cache,gamma = 1.5)
     total_time_elapsed = current_state.time_elapsed         # Current clock
     total_route = current_state.route         # List of actions taken so far
 
+    user_qualities = {}
+    user_pickup_times = {"A": 0}
+    user_ride_times = {}
+
     ##TODO: Change the syntax to deal with current_state, once state is defined in the static planner
     #Also vet the logic later
     
     #Path cost T(r)
-    total_t += cache[tuple(sorted((next_node.start, end)))]
+    new_t = cache[tuple(sorted((current_state.location, next_node[0])))]
+    total_t += new_t
     #Path quality Q(u)
-    current_time += cache[tuple(sorted((start, end)))]
-    if next_node.action == "pickup":
-        user_id = next_node.user_id
+    current_time += new_t
+    if next_node[2] == "pickup":
+        user_id = next_node[1]
         user_pickup_times[user_id] = current_time
         print(f"User {user_id} picked up at time {current_time} seconds.")
     
     #Calculate the user quality, Q(u) for a given user
-    if next_node.action== "dropoff":
-        user_id = next_node.user_id
+    if next_node[2]== "dropoff":
+        user_id = next_node[1]
         user_ride_times[user_id] = current_time - user_pickup_times[user_id]
         print(f"User {user_id} dropped off at time {current_time} seconds.")
         print(f"Ride time: {user_ride_times[user_id]} seconds.")
         #Weight the user quality by pickup time and ride time
-        user_qualities[user_id] = user_pickup_times[user_id] + gamma * user_ride_times[user_id]
-    
-    #Total cost J(r,u) = T(r) + Q(u)
-    total_cost = path_cost + total_quality
-    return total_cost
+        user_qualities[user_id] = gamma * user_pickup_times[user_id] + user_ride_times[user_id]
+    total_q = sum(user_qualities.values())
+    return total_t, total_q
