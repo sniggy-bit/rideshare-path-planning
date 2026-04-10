@@ -53,6 +53,7 @@ def route_generator(grid: Grid, requests: events.RequestSet, gamma = 1.5):
         stops.append((passenger_id, "pickup", pickup_location))
         stops.append((passenger_id, "dropoff", dropoff_location))
     distance_cache = all_distances(grid, stops, bfs_shortest_path, distance_cache, mode = "simple")
+    print(f"Distance cache: {distance_cache}")
 
     #INITIALIZATION
     
@@ -62,7 +63,7 @@ def route_generator(grid: Grid, requests: events.RequestSet, gamma = 1.5):
     #node representation: (location, waiting passengers, passengers in car, total T = 0 and total Q = 0)
     initial_state = TaxiState(location=start.pickup_location, 
                               waiting=passenger_ids, 
-                              in_car=(start[0]), 
+                              in_car=(start.passenger_id,), 
                               total_t=0, 
                               total_q=0, 
                               time=0, 
@@ -84,30 +85,31 @@ def route_generator(grid: Grid, requests: events.RequestSet, gamma = 1.5):
         current_state = heapq.heappop(open_set)
        
        #goal-test: Check whether the current state is the goal state (all passengers dropped)
-        if current_state.waiting == () and current_state.in_car == ():
-            return current_state.route
+        if current_state[1].waiting == () and current_state[1].in_car == ():
+            return current_state[1].route
         
         #add current state to explored (closed) set:
-        current_state_id = (current_state.location, current_state.waiting, current_state.in_car)
-        visited[current_state_id] = current_state.total_j
+        current_state_id = (current_state[1].location, current_state[1].waiting, current_state[1].in_car)
+        visited[current_state_id] = current_state[1].total_j
         
         #generate child nodes and evaluate their total J values, adding them to the frontier if they haven't been explored 
         potential_next_states = generate_next_states(current_state, request_dict, distance_cache, gamma)
+        print(potential_next_states)
         for move in potential_next_states:
             next_location, p_id, action = move
             if action == "pickup":
-                new_waiting = tuple(p for p in current_state.waiting if p != p_id)
-                new_in_car = tuple(sorted(current_state.in_car + (p_id,)))
+                new_waiting = tuple(p for p in current_state[1].waiting if p != p_id)
+                new_in_car = tuple(sorted(current_state[1].in_car + (p_id,)))
             else: # dropoff
-                new_waiting = current_state.waiting
-                new_in_car = tuple(p for p in current_state.in_car if p != p_id)
+                new_waiting = current_state[1].waiting
+                new_in_car = tuple(p for p in current_state[1].in_car if p != p_id)
             new_t, new_q = simple_cost_function(current_state, move, distance_cache, gamma)
             next_state = TaxiState(location=next_location,
                                     waiting=new_waiting,
                                     in_car=new_in_car,
                                     total_t=new_t,
                                     total_q=new_q,
-                                    route=current_state.route + [move]
+                                    route=current_state[1].route + [move]
             )
             h = calculate_heuristic(next_state, distance_cache, request_dict, gamma)
             next_state.total_j = next_state.total_t + next_state.total_q + h
@@ -133,42 +135,42 @@ def route_generator(grid: Grid, requests: events.RequestSet, gamma = 1.5):
 def generate_next_states(current_state, request_dict, distance_cache, gamma):
     next_states = []
     #Generate states for picking up or dropping off each passenger
-    for passenger_id in current_state.waiting:
+    for passenger_id in current_state[1].waiting:
         next_states.append((request_dict[passenger_id].pickup_location, passenger_id, "pickup"))
-    for passenger_id in current_state.in_car:
+    for passenger_id in current_state[1].in_car:
         next_states.append((request_dict[passenger_id].dropoff_location, passenger_id, "dropoff"))
     return next_states
 
 def calculate_heuristic(state:TaxiState, distance_cache, request_dict,gamma):
     #Heuristic function to estimate remaining cost to goal
     #Can be based on distance to remaining pickups/dropoffs and user quality
-    heuristic_scores = {passenger_id: (0,0) for passenger_id in (state.waiting + state.in_car)}
+    heuristic_scores = {passenger_id: (0,0) for passenger_id in (state[1].waiting + state[1].in_car)}
     #make dicts of user qualities for remaining passengers remaining in car and waiting to be picked up
     h_wait = {}
     h_ride = {}
     
     #Calculate heuristics h(r) and h(u) based on distance to remaining pickups and dropoffs
     #Calculate the wait times and ride times for remaining passengers to estimate h(u)
-    for passenger_id in state.waiting:
+    for passenger_id in state[1].waiting:
         pickup_location = request_dict[passenger_id].pickup_location
         dropoff_location = request_dict[passenger_id].dropoff_location
         #Calculate h(r) as the distance to pickup
-        heuristic_t = distance_cache[(state.location, pickup_location)]
+        heuristic_t = distance_cache[(state[1].location, pickup_location)]
         #Calculate h(u) as the weighted wait time
         #assume min(wait time) = dist(curr,pickup) 
-        h_wait[passenger_id] = distance_cache[(state.location, pickup_location)]
+        h_wait[passenger_id] = distance_cache[(state[1].location, pickup_location)]
         heuristic_q = gamma * h_wait[passenger_id]
         #Update the heuristic values for passengers waiting 
         current_t, current_q = heuristic_scores[passenger_id]
         heuristic_scores[passenger_id] = (current_t + heuristic_t, current_q + heuristic_q)
 
-    for passenger_id in state.in_car:
+    for passenger_id in state[1].in_car:
         dropoff_location = request_dict[passenger_id].dropoff_location
         #assume min(ride time) = dist(curr,dropoff)
-        heuristic_t = distance_cache[(state.location, dropoff_location)] 
+        heuristic_t = distance_cache[(state[1].location, dropoff_location)] 
          #Calculate h(u) as the weighted ride time
          #assume min(ride time) = dist(curr,dropoff)
-        h_ride[passenger_id] = distance_cache[(state.location, dropoff_location)]
+        h_ride[passenger_id] = distance_cache[(state[1].location, dropoff_location)]
         heuristic_q = h_ride[passenger_id]
         #Update the heuristic values for passengers in the car
         current_t, current_q = heuristic_scores[passenger_id]

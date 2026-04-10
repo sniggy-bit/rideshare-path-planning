@@ -3,7 +3,6 @@
 
 #Imports
 import numpy as np
-from routing.static_planner import TaxiState
 from src.graph.path_finder import bfs_shortest_path
 from src.graph.grid import Grid
 
@@ -37,15 +36,15 @@ def all_distances(grid, stops, bfs_shortest_path,cache, mode = "simple"):
     return cache
 
 
-def simple_cost_function(current_state: TaxiState, next_node, cache,gamma = 1.5):
+def simple_cost_function(current_state, next_node, cache,gamma = 1.5):
    
-    location = current_state.location    #Current location of the taxi (tuple)
-    waiting = current_state.waiting          # Tuple of user IDs
-    in_car = current_state.in_car            # Tuple of user IDs
-    total_t = current_state.total_t         # Running T(r)
-    total_q = current_state.total_q         # Running Q(u)
-    total_time_elapsed = current_state.time_elapsed         # Current clock
-    total_route = current_state.route         # List of actions taken so far
+    location = current_state[1].location    #Current location of the taxi (tuple)
+    waiting = current_state[1].waiting          # Tuple of user IDs
+    in_car = current_state[1].in_car            # Tuple of user IDs
+    total_t = current_state[1].total_t         # Running T(r)
+    total_q = current_state[1].total_q         # Running Q(u)
+    total_time_elapsed = current_state[1].time_elapsed         # Current clock
+    total_route = current_state[1].route         # List of actions taken so far
 
     user_qualities = {}
     user_pickup_times = {"A": 0}
@@ -55,7 +54,7 @@ def simple_cost_function(current_state: TaxiState, next_node, cache,gamma = 1.5)
     #Also vet the logic later
     
     #Path cost T(r)
-    new_t = cache[tuple(sorted((current_state.location, next_node[0])))]
+    new_t = cache[tuple(sorted((current_state[1].location, next_node[0])))]
     total_t += new_t
     #Path quality Q(u)
     current_time += new_t
