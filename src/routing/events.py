@@ -3,15 +3,12 @@
 from dataclasses import dataclass
 from typing import Tuple, List, Dict
 
-# Node definition for grid points
-node = Tuple[int, int]  # (row, column) representation
-
 #Single passenger request event
 @dataclass
 class RideRequest:
     passenger_id: str
-    pickup_location: node
-    dropoff_location: node
+    pickup_location: Tuple[int, int]
+    dropoff_location: Tuple[int, int]
 
 #Class storing multiple passenger request events
 class RequestSet:
@@ -31,11 +28,11 @@ class RequestSet:
         return self.requests.get(passenger_id, None)
     
     #Retrieve a pickup location for a specific passenger
-    def get_pickup(self, passenger_id: str) -> node:
+    def get_pickup(self, passenger_id: str) -> Tuple[int, int]:
         return self.requests[passenger_id].pickup_location                      
     
     #Retrieve a dropoff location for a specific passenger
-    def get_dropoff(self, passenger_id: str) -> node:
+    def get_dropoff(self, passenger_id: str) -> Tuple[int, int]:
         return self.requests[passenger_id].dropoff_location
     
 

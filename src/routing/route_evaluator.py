@@ -38,38 +38,26 @@ def all_distances(grid, stops, bfs_shortest_path,cache, mode = "simple"):
 
 def simple_cost_function(current_state, next_node, cache,gamma = 1.5):
    
-    location = current_state[1].location    #Current location of the taxi (tuple)
-    waiting = current_state[1].waiting          # Tuple of user IDs
-    in_car = current_state[1].in_car            # Tuple of user IDs
-    total_t = current_state[1].total_t         # Running T(r)
-    total_q = current_state[1].total_q         # Running Q(u)
-    total_time_elapsed = current_state[1].time_elapsed         # Current clock
-    total_route = current_state[1].route         # List of actions taken so far
+    location = current_state.location    #Current location of the taxi (tuple)
+    waiting = current_state.waiting          # Tuple of user IDs
+    in_car = current_state.in_car            # Tuple of user IDs
+    total_t = current_state.total_t         # Running T(r)
+    total_q = current_state.total_q         # Running Q(u)
+    total_time_elapsed = current_state.time_elapsed         # Current clock
+    total_route = current_state.route         # List of actions taken so far
 
-    user_qualities = {}
-    user_pickup_times = {"A": 0}
-    user_ride_times = {}
-
-    ##TODO: Change the syntax to deal with current_state, once state is defined in the static planner
-    #Also vet the logic later
+    # 1. Get the distance for this specific move
+    # next_node[0] is the (x, y) location of the move
+    leg_distance = cache[tuple(sorted((current_state.location, next_node[0])))]
     
-    #Path cost T(r)
-    new_t = cache[tuple(sorted((current_state[1].location, next_node[0])))]
-    total_t += new_t
-    #Path quality Q(u)
-    current_time += new_t
-    if next_node[2] == "pickup":
-        user_id = next_node[1]
-        user_pickup_times[user_id] = current_time
-        print(f"User {user_id} picked up at time {current_time} seconds.")
+    # 2. Update Total Driving Time (T)
+    new_total_t = current_state.total_t + leg_distance
     
-    #Calculate the user quality, Q(u) for a given user
-    if next_node[2]== "dropoff":
-        user_id = next_node[1]
-        user_ride_times[user_id] = current_time - user_pickup_times[user_id]
-        print(f"User {user_id} dropped off at time {current_time} seconds.")
-        print(f"Ride time: {user_ride_times[user_id]} seconds.")
-        #Weight the user quality by pickup time and ride time
-        user_qualities[user_id] = gamma * user_pickup_times[user_id] + user_ride_times[user_id]
-    total_q = sum(user_qualities.values())
-    return total_t, total_q
+    # 3. Update Total Quality Cost (Q)
+    # Penalize for everyone waiting and everyone currently in the car
+    wait_penalty = len(current_state.waiting) * leg_distance * gamma
+    ride_penalty = len(current_state.in_car) * leg_distance
+    
+    new_total_q = current_state.total_q + wait_penalty + ride_penalty
+    
+    return new_total_t, new_total_q
