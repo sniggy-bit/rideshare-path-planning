@@ -87,13 +87,16 @@ def route_generator(grid: Grid, requests: events.RequestSet, taxi_loc: tuple, ga
     open_set = [(total_j, count, initial_state)]
     visited = {(initial_state.location, initial_state.waiting, initial_state.in_car): initial_state.total_g}
 
+    #Search history for the animation/visualization
+    search_history = []
+
     #Loop to search for optimal route
     while open_set:
         _, _, current_state = heapq.heappop(open_set)
        
        #goal-test: Check whether the current state is the goal state (all passengers dropped)
         if not current_state.waiting and not current_state.in_car:
-            return current_state.route
+            return current_state.route, search_history
         
         #add current state to explored (closed) set:
         current_state_id = (current_state.location, current_state.waiting, current_state.in_car)
@@ -103,6 +106,26 @@ def route_generator(grid: Grid, requests: events.RequestSet, taxi_loc: tuple, ga
         print(potential_next_states)
         for move in potential_next_states:
             next_location, p_id, action = move
+            # --- MANHATTAN FRONTIER LOGGING ---
+            curr_x, curr_y = current_state.location
+            
+            # These are the 4 cardinal directions (No Diagonals)
+            # We record these to show what the algorithm "considers" 
+            # as the first steps toward the target.
+            cardinal_neighbors = [
+                (curr_y + 0.1, curr_x), (curr_y - 0.1, curr_x),
+                (curr_y, curr_x + 0.1), (curr_y, curr_x - 0.1)
+            ]
+            
+            for neighbor_pos in cardinal_neighbors:
+                # Optional: Ensure we stay within grid bounds
+                if 0 <= neighbor_pos[0] <= grid.width and 0 <= neighbor_pos[1] <= grid.height:
+                    search_history.append({
+                        'pos': neighbor_pos,
+                        'waiting': current_state.waiting,
+                        'in_car': current_state.in_car
+                    })
+            #Actually getting the next locations
             if action == "pickup":
                 new_waiting = tuple(p for p in current_state.waiting if p != p_id)
                 new_in_car = tuple(sorted(current_state.in_car + (p_id,)))
@@ -120,7 +143,21 @@ def route_generator(grid: Grid, requests: events.RequestSet, taxi_loc: tuple, ga
             )
             h = calculate_heuristic(next_state, distance_cache, request_dict, gamma)
             next_state_total_j =  next_state.total_g + h
+
+            # LOG THE SEARCH STEP
+            # This records the taxi's location and status for the animation
+            search_history.append({
+                'pos': next_state.location,
+                'waiting': next_state.waiting,
+                'in_car': next_state.in_car
+            })
+
+            # VERIFICATION LOGIC:
+            if h < 0:
+                print(f"CRITICAL ERROR: Negative heuristic at {next_state.location}")
+            
             print(f'Total J = g + h = {next_state_total_j}')
+            
             #Ensure that cycling is avoided by checking whether this is the best path to this state so far
             state_id = (next_state.location, next_state.waiting, next_state.in_car)
 
@@ -170,7 +207,6 @@ def calculate_heuristic(state:TaxiState, distance_cache, request_dict,gamma):
         #Update the heuristic values for passengers waiting 
         current_t, current_q = heuristic_scores[passenger_id]
         heuristic_scores[passenger_id] = (current_t + heuristic_t, current_q + heuristic_q)
-        print(f'heuristic scores: {heuristic_scores}')
 
     for passenger_id in state.in_car:
         dropoff_location = request_dict[passenger_id].dropoff_location
@@ -183,7 +219,6 @@ def calculate_heuristic(state:TaxiState, distance_cache, request_dict,gamma):
         #Update the heuristic values for passengers in the car
         current_t, current_q = heuristic_scores[passenger_id]
         heuristic_scores[passenger_id] = (current_t + heuristic_t, current_q + heuristic_q)
-        print(f'heuristic scores: {heuristic_scores}')
     #Combine heuristics for time and quality into a single heuristic score
     total_heuristic_score = sum(t + q for t, q in heuristic_scores.values())
     return total_heuristic_score
