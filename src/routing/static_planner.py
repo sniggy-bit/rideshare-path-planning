@@ -1,4 +1,4 @@
-#Static path planning module for rideshare application 
+#Static behavior and path planning module for rideshare application 
 
 #Imports
 import itertools
@@ -53,7 +53,6 @@ def route_generator(grid: Grid, requests: events.RequestSet, taxi_loc: tuple, ga
         stops.append((passenger_id, "pickup", pickup_location))
         stops.append((passenger_id, "dropoff", dropoff_location))
     distance_cache = all_distances(grid, stops, bfs_shortest_path, distance_cache, mode = "simple")
-    print(f"Distance cache: {distance_cache}")
 
     #INITIALIZATION
     
@@ -67,6 +66,7 @@ def route_generator(grid: Grid, requests: events.RequestSet, taxi_loc: tuple, ga
     # 3. Create the initial state: A is already picked up
     # Note: total_t starts at dist_to_a. total_q (quality) starts at 0 or weighted dist_to_a.
     initial_route = [(first_p_id, "pickup", first_req.pickup_location)]
+    print(f"Route so far: {initial_route}")
     
     initial_state = TaxiState(
         location=first_req.pickup_location,
@@ -81,6 +81,7 @@ def route_generator(grid: Grid, requests: events.RequestSet, taxi_loc: tuple, ga
     # 4. Compute initial heuristic and set J
     h_init = calculate_heuristic(initial_state, distance_cache, request_dict, gamma)
     total_j = initial_state.total_g + h_init
+    print(f"Total J = {initial_state.total_g} + {h_init} = {total_j}")
 
     # 5. Seed the frontier
     count = 0 # Tie-breaker
@@ -100,31 +101,24 @@ def route_generator(grid: Grid, requests: events.RequestSet, taxi_loc: tuple, ga
         
         #add current state to explored (closed) set:
         current_state_id = (current_state.location, current_state.waiting, current_state.in_car)
-        
+        print(f"Updated route: {current_state.route}")
+
         #generate child nodes and evaluate their total J values, adding them to the frontier if they haven't been explored 
         potential_next_states = generate_next_states(current_state, request_dict, distance_cache, gamma)
-        print(potential_next_states)
+        print(f" Next Move options: {potential_next_states}")
         for move in potential_next_states:
             next_location, p_id, action = move
-            # --- MANHATTAN FRONTIER LOGGING ---
-            curr_x, curr_y = current_state.location
+            print(f"Evaluating move {move}")
             
-            # These are the 4 cardinal directions (No Diagonals)
-            # We record these to show what the algorithm "considers" 
-            # as the first steps toward the target.
-            cardinal_neighbors = [
-                (curr_y + 0.1, curr_x), (curr_y - 0.1, curr_x),
-                (curr_y, curr_x + 0.1), (curr_y, curr_x - 0.1)
-            ]
-            
-            for neighbor_pos in cardinal_neighbors:
-                # Optional: Ensure we stay within grid bounds
-                if 0 <= neighbor_pos[0] <= grid.width and 0 <= neighbor_pos[1] <= grid.height:
-                    search_history.append({
-                        'pos': neighbor_pos,
-                        'waiting': current_state.waiting,
-                        'in_car': current_state.in_car
-                    })
+            #Run local A* from current to next node for animation
+            path_to_next, local_search_history = get_path_astar(current_state.location, next_location, grid)
+            # Add all the grid cells the low-level A* 'touched' to the global log
+            for explored_pos in local_search_history:
+                search_history.append({
+                    'pos': explored_pos,
+                    'state_id': (next_location, p_id, action) # Identify which 'thought' this belongs to
+                })
+        
             #Actually getting the next locations
             if action == "pickup":
                 new_waiting = tuple(p for p in current_state.waiting if p != p_id)
@@ -144,19 +138,11 @@ def route_generator(grid: Grid, requests: events.RequestSet, taxi_loc: tuple, ga
             h = calculate_heuristic(next_state, distance_cache, request_dict, gamma)
             next_state_total_j =  next_state.total_g + h
 
-            # LOG THE SEARCH STEP
-            # This records the taxi's location and status for the animation
-            search_history.append({
-                'pos': next_state.location,
-                'waiting': next_state.waiting,
-                'in_car': next_state.in_car
-            })
-
             # VERIFICATION LOGIC:
             if h < 0:
                 print(f"CRITICAL ERROR: Negative heuristic at {next_state.location}")
             
-            print(f'Total J = g + h = {next_state_total_j}')
+            print(f'Total J = {next_state.total_g} + {h} = {next_state_total_j}')
             
             #Ensure that cycling is avoided by checking whether this is the best path to this state so far
             state_id = (next_state.location, next_state.waiting, next_state.in_car)
@@ -221,8 +207,43 @@ def calculate_heuristic(state:TaxiState, distance_cache, request_dict,gamma):
         heuristic_scores[passenger_id] = (current_t + heuristic_t, current_q + heuristic_q)
     #Combine heuristics for time and quality into a single heuristic score
     total_heuristic_score = sum(t + q for t, q in heuristic_scores.values())
+    print(f"Heuristic score for move: {total_heuristic_score}")
     return total_heuristic_score
 
+#Local A* path planning from start to goal node
+def get_path_astar(start, goal, grid):
+    """Standard A* to find grid-by-grid path (Manhattan only)"""
+    open_set = []
+    heapq.heappush(open_set, (0, start))
+    came_from = {}
+    g_score = {start: 0}
+    
+    # Track node exploration
+    local_search_history = []
 
+    while open_set:
+        _, current = heapq.heappop(open_set)
+
+        if current == goal:
+            # Reconstruct the path
+            path = []
+            while current in came_from:
+                path.append(current)
+                current = came_from[current]
+            return path[::-1], local_search_history
+
+        # 4-directional Manhattan neighbors
+        for dy, dx in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+            neighbor = (current[0] + dy, current[1] + dx)
+            
+            if 0 <= neighbor[0] < grid.height and 0 <= neighbor[1] < grid.width:
+                tentative_g = g_score[current] + 1
+                if neighbor not in g_score or tentative_g < g_score[neighbor]:
+                    came_from[neighbor] = current
+                    g_score[neighbor] = tentative_g
+                    f_score = tentative_g + abs(neighbor[0]-goal[0]) + abs(neighbor[1]-goal[1])
+                    heapq.heappush(open_set, (f_score, neighbor))
+                    local_search_history.append(neighbor)
+    return [], local_search_history
 
     

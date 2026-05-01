@@ -31,72 +31,76 @@ def animate_search(grid, requests, taxi_start, final_route, search_history):
     # --- PASSENGER LABELS ---
     req_dict = requests.get_all_requests()
     for p_id, req in req_dict.items():
-        py,px = req.pickup_location
-        # Label Pickups
-        ax.scatter(*req.pickup_location, c='lime', marker='o', s=200, edgecolors='black', zorder=5)
-        ax.text(req.pickup_location[0], req.pickup_location[1] + 0.3, f"Pick {p_id} {(px,py)}", 
+        # Correctly unpacking (y, x)
+        py, px = req.pickup_location
+        # Plot as (x, y)
+        ax.scatter(px, py, c='lime', marker='o', s=200, edgecolors='black', zorder=5)
+        # Label with (y, x) so it matches your backend data for debugging
+        ax.text(px, py + 0.3, f"Pick {p_id} ({py}, {px})", 
                 ha='center', fontweight='bold', fontsize=9, bbox=dict(facecolor='white', alpha=0.6))
-        
-        # Label Dropoffs
-        ax.scatter(*req.dropoff_location, c='red', marker='x', s=100, zorder=5)
-        ax.text(req.dropoff_location[0], req.dropoff_location[1] + 0.3, f"Drop {p_id} {(px,py)}", 
+
+        dy, dx = req.dropoff_location
+        ax.scatter(dx, dy, c='red', marker='x', s=100, zorder=5)
+        ax.text(dx, dy + 0.3, f"Drop {p_id} ({dy}, {dx})", 
                 ha='center', fontweight='bold', fontsize=9, bbox=dict(facecolor='white', alpha=0.6))
 
     # --- ANIMATION ELEMENTS ---
     #Showing explored nodes of A*
-    explored_scatter = ax.scatter([], [], c='cyan', s=100, alpha=0.7, label='States Explored', zorder=50)
+    explored_scatter = ax.scatter([], [], c='cyan', s=40, alpha=0.3, label='States Explored', zorder=1)
     #Showing the taxi (agent) itself
     taxi_marker, = ax.plot([], [], 'gold', marker='s', markersize=15, markeredgecolor='black', zorder=10)
     #Showing the actual path of the taxi
-    path_line, = ax.plot([], [], 'blue', alpha=0.6, linewidth=2, label='Final Path')
+    path_line, = ax.plot([], [], 'blue', alpha=0.8, linewidth=3, drawstyle='steps-post', label='Final Path', zorder=2)
 
     # 3. The Moving Parts
     # Initialize empty lists to store the path as it grows
-
-    hx, hy = [], []
 
     def init():
         taxi_marker.set_data([], [])
         path_line.set_data([], [])
         return taxi_marker, path_line
 
-    explored_coords = []
+    # --- PREPARE DATA FOR ONE-BY-ONE ANIMATION ---
+    animation_frames = []
+    for p_id, action, loc in final_route:
+        # 1. Grab all "thoughts" associated with this specific move
+        current_leg_id = (loc, p_id, action)
+        thinking_nodes = [s['pos'] for s in search_history if s.get('state_id') == current_leg_id]
+    
+        # 2. Add a 'think' frame for every single dot found
+        for node in thinking_nodes:
+            animation_frames.append({'type': 'think', 'pos': node, 'p_id': p_id, 'action': action})
+        
+        # 3. Add a 'move' frame for the actual taxi movement
+        animation_frames.append({'type': 'move', 'pos': loc, 'p_id': p_id, 'action': action})
+
+    cumulative_cloud = []
+    hx, hy = [], []
 
     def update(frame_idx):
-        #Get stop from the final route index by index
-        p_id, action, loc = final_route[frame_idx]
-        curr_y, curr_x = loc
-        
-        # Append the new coordinates to our tracking lists
-        hx.append(loc[0])
-        hy.append(loc[1])
+        frame_data = animation_frames[frame_idx]
+        y, x = frame_data['pos'] # Unpack current position
     
-        # Update the visual elements
-        taxi_marker.set_data([loc[0]], [loc[1]])
-        path_line.set_data(hx, hy)
-
-        # Show the A* search history up to this point in time
-
-        # Since search_history is small, let's show 
-        # more nodes per frame so the cyan dots stay visible.
-        # This shows the first 3 explored nodes, then 6, then 9...
-        current_limit = min((frame_idx + 1) * 3, len(search_history)) 
+        if frame_data['type'] == 'think':
+        # Add to the growing heatmap
+            cumulative_cloud.append((x, y))
+            explored_scatter.set_offsets(np.array(cumulative_cloud))
+            ax.set_title(f"Thinking about {frame_data['action']} {frame_data['p_id']}...")
         
-        # Extract the tuples
-        current_cloud = [(step['pos'][1],step['pos'][0]) for step in search_history[:current_limit]]
-        
-        #Now add the explored coordinates to the scatter
-        if current_cloud:
-            points = np.array(current_cloud)
-            explored_scatter.set_offsets(points)
-            print(f"Frame {frame_idx}: Plotting {len(points)} dots") # <--- Debugging line
+        elif frame_data['type'] == 'move':
+            # Extend the blue path line and move the gold box
+            hx.append(x)
+            hy.append(y)
+            taxi_marker.set_data([x], [y])
+            path_line.set_data(hx, hy)
+            ax.set_title(f"DECISION: {frame_data['action']} {frame_data['p_id']}")
 
-        ax.set_title(f"Step {len(hx) - 1}: {action} Passenger {p_id}")
-        
         return taxi_marker, path_line, explored_scatter, ax.title
 
-    ani = FuncAnimation(fig, update, frames= range(len(final_route)), init_func=init, 
-                        blit=False, interval=5000, repeat=False)
+    # CRITICAL: Change frames to use the new sequence length
+    ani = FuncAnimation(fig, update, frames=range(len(animation_frames)), 
+                    init_func=init, blit=False, interval=30, repeat=False)
+
     
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.show()
