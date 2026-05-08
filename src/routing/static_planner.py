@@ -89,7 +89,6 @@ def route_generator(grid: Grid, requests: events.RequestSet, taxi_loc: tuple, ga
     visited = {(initial_state.location, initial_state.waiting, initial_state.in_car): initial_state.total_g}
 
     #Search history for the animation/visualization
-    search_history = []
 
     #Loop to search for optimal route
     while open_set:
@@ -97,7 +96,7 @@ def route_generator(grid: Grid, requests: events.RequestSet, taxi_loc: tuple, ga
        
        #goal-test: Check whether the current state is the goal state (all passengers dropped)
         if not current_state.waiting and not current_state.in_car:
-            return current_state.route, search_history
+            return current_state.route
         
         #add current state to explored (closed) set:
         current_state_id = (current_state.location, current_state.waiting, current_state.in_car)
@@ -109,15 +108,6 @@ def route_generator(grid: Grid, requests: events.RequestSet, taxi_loc: tuple, ga
         for move in potential_next_states:
             next_location, p_id, action = move
             print(f"Evaluating move {move}")
-            
-            #Run local A* from current to next node for animation
-            path_to_next, local_search_history = get_path_astar(current_state.location, next_location, grid)
-            # Add all the grid cells the low-level A* 'touched' to the global log
-            for explored_pos in local_search_history:
-                search_history.append({
-                    'pos': explored_pos,
-                    'state_id': (next_location, p_id, action) # Identify which 'thought' this belongs to
-                })
         
             #Actually getting the next locations
             if action == "pickup":
@@ -209,41 +199,5 @@ def calculate_heuristic(state:TaxiState, distance_cache, request_dict,gamma):
     total_heuristic_score = sum(t + q for t, q in heuristic_scores.values())
     print(f"Heuristic score for move: {total_heuristic_score}")
     return total_heuristic_score
-
-#Local A* path planning from start to goal node
-def get_path_astar(start, goal, grid):
-    """Standard A* to find grid-by-grid path (Manhattan only)"""
-    open_set = []
-    heapq.heappush(open_set, (0, start))
-    came_from = {}
-    g_score = {start: 0}
-    
-    # Track node exploration
-    local_search_history = []
-
-    while open_set:
-        _, current = heapq.heappop(open_set)
-
-        if current == goal:
-            # Reconstruct the path
-            path = []
-            while current in came_from:
-                path.append(current)
-                current = came_from[current]
-            return path[::-1], local_search_history
-
-        # 4-directional Manhattan neighbors
-        for dy, dx in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-            neighbor = (current[0] + dy, current[1] + dx)
-            
-            if 0 <= neighbor[0] < grid.height and 0 <= neighbor[1] < grid.width:
-                tentative_g = g_score[current] + 1
-                if neighbor not in g_score or tentative_g < g_score[neighbor]:
-                    came_from[neighbor] = current
-                    g_score[neighbor] = tentative_g
-                    f_score = tentative_g + abs(neighbor[0]-goal[0]) + abs(neighbor[1]-goal[1])
-                    heapq.heappush(open_set, (f_score, neighbor))
-                    local_search_history.append(neighbor)
-    return [], local_search_history
 
     
