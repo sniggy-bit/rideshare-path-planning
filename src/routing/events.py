@@ -9,6 +9,7 @@ class RideRequest:
     passenger_id: str
     pickup_location: Tuple[int, int]
     dropoff_location: Tuple[int, int]
+    request_time: int
 
 #Class storing multiple passenger request events
 class RequestSet:
@@ -34,6 +35,10 @@ class RequestSet:
     #Retrieve a dropoff location for a specific passenger
     def get_dropoff(self, passenger_id: str) -> Tuple[int, int]:
         return self.requests[passenger_id].dropoff_location
+    
+    #Retrieve time of request
+    def get_request_time(self, passenger_id: str) -> int:
+        return self.requests[passenger_id].request_time
     
 
 

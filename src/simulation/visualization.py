@@ -25,9 +25,14 @@ def animate_search(grid, requests, taxi_start, final_route):
     ax.set_xlabel("x distance (meters)")
     ax.set_ylabel("y_distance (meters)")
 
+    # ---LABEL TAXI START----
+    ax.scatter(final_route[0][2][0], final_route[0][2][1], c='gold', marker = '*', s=200, edgecolors='black', zorder=5)
+    ax.text(final_route[0][2][0], final_route[0][2][1] + 1.0, f"Taxi Location: ({final_route[0][2][1]}, {final_route[0][2][0]})", 
+            ha='center', fontweight='bold', fontsize=9, bbox=dict(facecolor='white', alpha=0.6))
+
     # --- PASSENGER LABELS ---
     req_dict = requests.get_all_requests()
-    for p_id, req in req_dict.items():
+    for p_id, req, loc in req_dict.items():
         # Extract coordinates for the text label
         ux, uy = req.pickup_location
         dx, dy = req.dropoff_location

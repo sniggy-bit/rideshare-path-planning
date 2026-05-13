@@ -109,16 +109,18 @@ def test_static_planner():
     from src.simulation.visualization import animate_search
 
     # Create a simple grid and valid_routes for testing
-    grid = Grid(50, 50)
+    grid = Grid(10, 10)
 
     # Create some random ride requests
     requests = RequestSet()
     users = ("A","B","C")
+    req_time = 0
+
 
     for user in users:
         pickup_loc = tuple(random.randint(1,grid.height)for _ in range(2))
         drop_loc = tuple(random.randint(1,grid.height)for _ in range(2)) 
-        requests.add_request(RideRequest(user, pickup_loc, drop_loc))
+        requests.add_request(RideRequest(user, pickup_loc, drop_loc,req_time))
     #Generate start location of the taxi
     start_loc = tuple(random.randint(1,grid.height)for _ in range(2))
 
@@ -133,7 +135,7 @@ def test_static_planner():
 
 #Test with various grid sizes to check if efficiency of algorithm changes
 
-@pytest.mark.parametrize("size", [(10,10), (50,50), (100,100)])
+@pytest.mark.parametrize("size", [(10,10),(50,50),(100,100)])
 
 def test_static_planner_scales(benchmark, size):
     from src.routing.static_planner import route_generator
@@ -143,11 +145,23 @@ def test_static_planner_scales(benchmark, size):
 
     # Create some random ride requests
     requests = RequestSet()
-    users = ("A","B","C")
-    for user in users:
+    users = tuple(sorted(("A","B","C")))
+
+    for i in range (len(users)):
         pickup_loc = tuple(random.randint(1,grid.height)for _ in range(2))
-        drop_loc = tuple(random.randint(1,grid.height)for _ in range(2)) 
-        requests.add_request(RideRequest(user, pickup_loc, drop_loc))
+        drop_loc = tuple(random.randint(1,grid.height)for _ in range(2))
+        #Generate random times of each request with conditions:
+        if users[i] == "A":
+            req_time = random.randint(1,grid.height)
+        else:
+            prev_user = users[i-1]
+            prev_request = requests.get_request(prev_user)
+            min_dist_prev = abs(prev_request.dropoff_location[1] - prev_request.pickup_location[1]) + abs(prev_request.dropoff_location[0] - prev_request.pickup_location[0])
+            req_time = random.randint(prev_request.request_time, prev_request.request_time + min_dist_prev)
+        requests.add_request(RideRequest(users[i], pickup_loc, drop_loc,req_time))
+        print(requests.get_all_requests())
+    all_requests = requests.get_all_requests
+    assert requests.get_request_time("C") > requests.get_request_time("B")
     
     # This will result in 3 separate rows in your benchmark table
     benchmark(route_generator, grid, requests, (1,1))
