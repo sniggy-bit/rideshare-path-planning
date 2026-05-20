@@ -128,9 +128,6 @@ def route_generator(grid: Grid, requests: events.RequestSet, taxi_loc: tuple, ga
             h = calculate_heuristic(next_state, distance_cache, request_dict, gamma)
             next_state_total_j =  next_state.total_g + h
 
-            # VERIFICATION LOGIC:
-            if h < 0:
-                print(f"CRITICAL ERROR: Negative heuristic at {next_state.location}")
             
             print(f'Total J = {next_state.total_g} + {h} = {next_state_total_j}')
             
@@ -198,4 +195,3 @@ def calculate_heuristic(state:TaxiState, distance_cache, request_dict,gamma):
     print(f"Heuristic score for move: h_t {h_t} + h_q {total_h_q}")
     return h_t + total_h_q
 
-    
